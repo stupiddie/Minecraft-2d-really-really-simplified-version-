@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>minecraft 2d</title>
+<style>
+canvas {
+border: 2px solid rgb(6, 0, 0);
+display: block;
+margin: 20px auto;
+}
+</style> 
+</head>
+<body>
+<h2>minecraft 2d</h2>
+<canvas id="myCanvas" width="800" height="600"></canvas>
+<script>
+    const canvas = document.getElementById('myCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    var grids = [];
+
+    //设置背景
+    for(var i = 0; i < canvas.width / 10; i++){
+        grids[i] = []
+        for(var j = 0; j < canvas.height / 10; j++){
+            grid = {
+                x: i,
+                y: j,
+                id: null
+            }
+            grids[i][j] = grid
+        }
+    }
+    
+    //随机闭区间的整数
+    function random(min, max){
+        var Min = Math.ceil(min);
+        var Max = Math.floor(max);
+        return (Math.floor((Math.random() * (Max - Min + 1))) + Min )
+    }
+
+    //设置角色
+    var p = {
+        x: 1,
+        y: 1,
+        dir: 'right',
+        state: 'falling',
+        jump_ability: 8,
+        bag: [soils, blocks],
+        i: 0,
+    }
+    for(var i = 0; i < p.bag.length; i++){
+        p.bag[i] = 0;
+    }
+
+    var cubes = [];
+
+    //所有方块
+    class cube {
+        constructor(x, y, state, id){
+            this.x = x
+            this.y = y
+            this.state = state
+            this.id = id
+         }
+    }
+
+    //泥土
+    var soils = [];
+    setTimeout(function(){
+       for(var i = 0; i < 500; i++){
+            soils.push(new cube(random(0, 79),random(0, 30), 'falling', 1))
+        } 
+    }, 2000)    
+
+    //挡板
+    var blocks = [];
+    for(var i = 0; i < 3; i++){
+        for(var j = 0; j < 80; j++){
+             blocks.push(new cube(j, 59 - i, 'fixed', 2)) 
+        }
+    }
+    
+    cubes.push(soils);
+    cubes.push(blocks);
+
+    //设置跳跃的高度
+    function set_jump_ability(x, y, p){
+        var h = 0
+        for(var i = 0; i < p.jump_ability; i++){
+            if(grids[x][y - i - 1].id == null){
+                h += 1
+            } else {
+                break;
+            }
+        }
+        return h 
+    }
+
+    //挖走
+    function remove(x, y){
+        for(var i = 0; i < cubes.length; i++){
+            for(var j = 0; j < cubes[i].length; j++){
+                if(cubes[i][j].x == x && cubes[i][j].y == y){
+                    pick_up(p, cubes[i][j].id, j)
+                }
+            }
+        }
+        grids[x][y].id = null
+    }
+
+    //拾取
+    function pick_up(p, id, index){
+        switch(id){
+            case 1:
+                p.bag[0] += 1;
+                soils.splice(index, 1);
+                break;
+
+            case 2:
+                p.bag[1] += 1;
+                blocks.splice(index, 1);
+        }
+    }
+
+    //放置
+    function create(x, y, bag, i){
+        if(grids[x][y].id == null && bag[i] >= 1){
+            bag[i] -= 1
+            switch(i){
+                case 0:
+                    cubes[i].push(new cube(x, y, 'falling', 1))
+                    break;
+                
+                case 1:
+                    cubes[i].push(new cube(x, y, 'fixed', 2))
+                    break;
+            }
+        }
+    }
+
+    //键盘
+    document.addEventListener('keydown', function(event) {
+        switch(event.key){
+            case 'ArrowRight':
+                p.dir = 'right'
+                if(p.x >= 80){
+                    p.x = 79
+                }
+                if(grids[p.x + 1][p.y].id == null){
+                    p.x += 1;
+                    grids[p.x - 1][p.y].id = null
+                }
+                break;
+            
+            case 'ArrowLeft':
+                p.dir = 'left'
+                if(p.x <= 0){
+                    p.x = 0
+                }
+                if(grids[p.x - 1][p.y].id == null){
+                    p.x -= 1;
+                    grids[p.x + 1][p.y].id = null
+                }
+                break;
+
+            case 'ArrowUp':
+                p.dir = 'up'
+                if(grids[p.x][p.y + 1].id != null){
+                    p.state = 'jumping';
+                    for(var i = 0; i < set_jump_ability(p.x, p.y, p); i++){
+                        setTimeout(function(){
+                            grids[p.x][p.y].id = null 
+                            p.y -= 1;
+                        }, i * 30) 
+                    }
+                    setTimeout(function(){
+                        p.state = 'falling';
+                    },  set_jump_ability(p.x, p.y, p) * 30);
+                }  
+                break;
+            
+            case 'ArrowDown':
+                p.dir = 'down'
+                break;
+
+            case 'r':
+                grids[p.x][p.y].id = null
+                p.x = 1;
+                p.y = 1;
+                break;
+
+            case 'z':
+                switch(p.dir){
+                    case 'right':
+                        remove(p.x + 1, p.y)
+                        break;
+
+                    case 'left':
+                        remove(p.x - 1, p.y)
+                        break;
+
+                    case 'down':
+                        remove(p.x, p.y + 1)
+                        break;
+                    
+                    case 'up':
+                        remove(p.x, p.y - 1);
+                        break;
+                }
+                break;
+
+            case 'x':
+                switch(p.dir){
+                    case 'right':
+                        create(p.x + 1, p.y, p.bag, p.i)
+                        break;
+
+                    case 'left':
+                        create(p.x - 1, p.y, p.bag, p.i)
+                        break;
+
+                    case 'down':
+                        create(p.x, p.y + 1, p.bag, p.i)
+                        break;
+                    
+                    case 'up':
+                        create(p.x, p.y - 1, p.bag, p.i);
+                        break;
+                }
+                break;
+            
+            case 'n':
+                p.i = (p.i + 1) % p.bag.length
+                console.log(p.i)
+                break;
+        }
+    })
+
+    //自由落体
+    function falling(obj){
+        if(obj.y < 59 && obj.state == 'falling' && grids[obj.x][obj.y + 1].id == null){
+            grids[obj.x][obj.y].id = null;
+            obj.y += 1
+        }
+    }
+
+    //标记
+    function set_id(obj){
+        switch(obj.id){
+            case 1:
+                grids[obj.x][obj.y].id = 1;
+                break;
+
+            case 2:
+                grids[obj.x][obj.y].id = 2;
+                break;
+        }
+    }
+
+    //主循环
+    function draw(){
+        for(var i = 0; i < canvas.width / 10; i++){
+            for(var j = 0; j < canvas.height / 10; j++){
+                switch (grids[i][j].id){
+                    case null:
+                        ctx.fillStyle = 'skyblue';
+                        break;
+
+                    case 0:
+                        ctx.fillStyle = 'blue';
+                        break;
+
+                    case 1:
+                        ctx.fillStyle = '#9C5F4E';
+                        break;
+                        
+                    case 2:
+                        ctx.fillStyle = '#9E9E9E';
+                        break;
+                }
+                ctx.fillRect(grids[i][j].x * 10, grids[i][j].y * 10, 10, 10)
+            }
+        }
+
+        //角色自由落体和标记
+        falling(p);
+        grids[p.x][p.y].id = 0;
+
+        //所有方块自由落体和标记
+        for(var i = 0; i < cubes.length; i++){
+            for(var j = 0; j < cubes[i].length; j++){
+                falling(cubes[i][j]);
+                set_id(cubes[i][j])
+            }
+        }
+
+        requestAnimationFrame(draw)
+    }
+
+    draw()
+
+</script>
+</body>
+</html>    
